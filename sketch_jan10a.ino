@@ -119,7 +119,7 @@ String modes[] = {
 float modesCoef[] = {
   1.0,
   0.65,
-  1.5,
+  0.2,
 };
 
 String lubricateMethods[] = {
@@ -158,6 +158,24 @@ boolean oilerOpened = false;
 unsigned long sinceClosed = 0;
 unsigned long sinceOpened = 0;
 unsigned long lastMillis = 0;
+
+#define OIL_VISC_COUNT  2
+#define SAE_80_COL      1
+#define SAE_90_COL      2
+#define TEMP_COL        0
+#define VISC_TEMP_COUNT 9
+
+float temp_table[VISC_TEMP_COUNT][OIL_VISC_COUNT + 1] = { 
+{ -5, 1.5, 2.8},
+{  0, 1.4, 2.6},
+{  5, 1.3, 2.4},
+{ 10, 1.2, 2.2},
+{ 15, 1.1, 2.0},
+{ 20, 1.0, 1.8},
+{ 30, 0.9, 1.6},
+{ 40, 0.8, 1.4},
+{100, 0.6, 1.0}};
+
 
 void setup() {
   
