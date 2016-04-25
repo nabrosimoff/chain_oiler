@@ -159,13 +159,17 @@ unsigned long sinceClosed = 0;
 unsigned long sinceOpened = 0;
 unsigned long lastMillis = 0;
 
+boolean LCD_is_on = true;
+unsigned int LCD_buttons_doesnt_pressed = 0;
+#define LCD_TURN_ON_DELAY_MS 3000
+
 #define OIL_VISC_COUNT  2
 #define SAE_80_COL      1
 #define SAE_90_COL      2
 #define TEMP_COL        0
-#define VISC_TEMP_COUNT 9
+#define OIL_TEMP_COUNT 9
 
-float temp_table[VISC_TEMP_COUNT][OIL_VISC_COUNT + 1] = { 
+float temp_table[OIL_TEMP_COUNT][OIL_VISC_COUNT + 1] = { 
 { -5, 1.5, 2.8},
 {  0, 1.4, 2.6},
 {  5, 1.3, 2.4},
@@ -184,6 +188,7 @@ void setup() {
   pinMode(OILER_PIN, OUTPUT);
   initButtonsPins();
   lcdTurnOn();
+  LCD_is_on = true;
   initLCD();
   lastMillis = millis();
   
@@ -253,7 +258,15 @@ void loop() {
     lcdMenuUpdate(menuId);
     menuPosChanged = false;
     saved = false;
+    lcdTurnOn();
     delay(100);
+  }
+  else {
+    LCD_buttons_doesnt_pressed += timeDiff(lastMillis);
+    if (LCD_buttons_doesnt_pressed >= LCD_TURN_ON_DELAY_MS) {
+      LCD_buttons_doesnt_pressed = 0;
+      lcdTurnOff();
+    }
   }
   
   if (!oilerOpened) {
@@ -277,10 +290,28 @@ void loop() {
   
   if (oilerOpened) {
     sinceOpened += timeDiff(lastMillis);
-    if (sinceOpened >= int(float(menuValues[OPEN_ID] * 100) * modesCoef[menuValues[MODE_ID]])) {
-      oilerOpened = false;
-      sinceClosed = 0;
-      turnsCount = 0;
+    if (menuValues[LUB_MODE_ID] == MODE_TIME){
+      if (sinceOpened >= int(float(menuValues[OPEN_ID] * 100) * modesCoef[menuValues[MODE_ID]])) {
+        oilerOpened = false;
+        sinceClosed = 0;
+        turnsCount = 0;
+      }
+    }
+    
+    if (menuValues[LUB_MODE_ID] == MODE_DIST) {
+      int temperature_id = OIL_TEMP_COUNT - 1;
+      int temperature = getTemperature();
+      for (int i = 0; i < OIL_TEMP_COUNT; ++i) {
+        if (temp_table[i][0] >= temperature) {
+          temperature_id = i;
+          break;
+        }
+      }
+      if (sinceOpened >= int(temp_table[temperature_id][menuValues[VISCOCITY_ID]] * 1000.0 * modesCoef[menuValues[MODE_ID]])) {
+        oilerOpened = false;
+        sinceClosed = 0;
+        turnsCount = 0;
+      }
     }
   }
   
@@ -499,6 +530,8 @@ void saveSettings() {
   EEPROM.write(CODE_ADDR + 1, 0xAD);
   EEPROM.write(CODE_ADDR + 2, 0xBE);
   EEPROM.write(CODE_ADDR + 3, 0xEF);
+  
+  lcdTurnOff();
   
   Serial.println("Code path phrase written");
 }
